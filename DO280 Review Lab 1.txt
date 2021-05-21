@@ -1,0 +1,82 @@
+Lab 1
+-----
+
+lab review-dockerfile start
+cd DO288-apps
+git checkout master
+git checkout -b review-dockerfile
+git push -u origin review-dockerfile
+-- fix Dockerfile:
+LABEL version="1.0" \
+  description="To Do List application front-end" \
+  creationDate="2017-12-25" \
+  updatedDate="2019-08-01"
+
+RUN yum install -y --disableplugin=subscription-manager --nodocs \
+  nginx nginx-mod-http-perl \
+  && yum clean all
+
+RUN touch /run/nginx.pid \
+  && chgrp -R 0 /var/log/nginx /run/nginx.pid \
+  && chmod -R g+rwx /var/log/nginx /run/nginx.pid
+
+USER 1001
+
+cd todo-frontend
+-- build based on dockerfileoc
+sudo podman build -t todo-frontend .
+-- -d background process
+sudo podman run --name testfrontend -d -p 8080:8080 todo-frontend
+-- -s silent
+curl -s localhost:8080 | grep h1
+
+-- remove container
+sudo podman stop testfrontend
+sudo podman rm testfrontend
+
+git commit -a -m 'Fixed for OpenShift'
+git push
+
+cd ~
+source /usr/local/etc/ocp4.config
+
+sudo podman login -u ${RHT_OCP4_QUAY_USER} quay.io
+-- push image to quay:  copies containers-storage, oci or docker
+sudo skopeo copy containers-storage:localhost/todo-frontend docker://quay.io/${RHT_OCP4_QUAY_USER}/todo-frontend
+
+-- make image available to ur project
+oc login -u ${RHT_OCP4_DEV_USER} -p ${RHT_OCP4_DEV_PASSWORD} ${RHT_OCP4_MASTER_API}
+
+-- common project: XDG_RUNTIME_DIR is available on registry login
+oc new-project ${RHT_OCP4_DEV_USER}-review-common
+podman login -u ${RHT_OCP4_QUAY_USER} quay.io
+
+-- skopeop copy --help will give info about XDG
+oc create secret generic quayio --from-file .dockerconfigjson=${XDG_RUNTIME_DIR}/containers/auth.json \
+> --type kubernetes.io/dockerconfigjson
+
+-- import image from quay.io to be named todo-frontend to -review-common project
+oc import-image todo-frontend --confirm \
+> --reference-policy local \
+> --from quay.io/${RHT_OCP4_QUAY_USER}/todo-frontend
+
+oc new-project ${RHT_OCP4_DEV_USER}-review-dockerfile
+-- oc describe rolebinding.rbac | grep image gives info about system
+-- grant service accounts from the new youruser-review-dockerfile project access to image streams from the youruser-review-common project.
+-- if not and try to use image from an
+oc policy add-role-to-group \
+> -n ${RHT_OCP4_DEV_USER}-review-common system:image-puller \
+> system:serviceaccounts:${RHT_OCP4_DEV_USER}-review-dockerfile
+
+oc new-app --as-deployment-config --name frontend \
+> -e BACKEND_HOST=api.example.com \
+> -i ${RHT_OCP4_DEV_USER}-review-common/todo-frontend
+
+oc get pod
+oc expose svc frontend
+oc get route
+curl -s \
+> http://frontend-${RHT_OCP4_DEV_USER}-review-dockerfile.\
+> ${RHT_OCP4_WILDCARD_DOMAIN} | grep h1
+
+lab review-dockerfile grade

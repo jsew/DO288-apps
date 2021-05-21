@@ -1,0 +1,111 @@
+Lab 3 - Building and Deploying a Multicontainer Application
+----------
+
+lab review-multicontainer start
+-- file copied to /student root
+cp ~/DO288/labs/review-multicontainer/todoapp.yaml \
+> ~/todoapp.yaml
+
+grep '^ kind:' ~/todoapp.yaml
+oc process --parameters -f ~/todoapp.yaml
+
+source /usr/local/etc/ocp4.config
+oc login -u ${RHT_OCP4_DEV_USER} \
+> -p ${RHT_OCP4_DEV_PASSWORD} ${RHT_OCP4_MASTER_API}
+
+oc get template nodejs-mongodb-example -n openshift \
+> -o yaml | less
+
+-- edit ~/todoapp.yaml 
+- displayName: Secret for webhooks
+name: SECRET
+required: true
+from: '[a-zA-Z0-9]{40}'
+generate: expression
+..
+- displayName: Flag to initialize (or not) the application database
+name: CLEAN_DATABASE
+required: true
+value: "false"
+
+-- edit ~/todoapp.yaml
+- apiVersion: v1
+stringData:
+password: ${PASSWORD}
+user: todoapp
+...
+- apiVersion: v1
+data:
+init: ${CLEAN_DATABASE}
+kind: ConfigMap
+...
+- apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+...output omitted...
+name: backend
+...output omitted...
+spec:
+host: ${BACKEND}
+....
+...output omitted...
+spec:
+host: ${HOSTNAME}
+...
+
+-- add health probes
+livenessProbe:
+httpGet:
+path: /todo/api/items-count
+port: 8080
+initialDelaySeconds: 10
+timeoutSeconds: 3
+readinessProbe:
+httpGet:
+path: /todo/api/host
+port: 8080
+initialDelaySeconds: 10
+timeoutSeconds: 3
+
+
+oc project ${RHT_OCP4_DEV_USER}-review-common
+-- dry-run sees if required parms are passed
+oc new-app --dry-run -f ~/todoapp.yaml \
+> -p PASSWORD=x -p HOSTNAME=y -p BACKEND=z
+
+-- create template 
+oc create -f ~/todoapp.yaml
+oc process --parameters todoapp
+
+
+-----
+oc new-project ${RHT_OCP4_DEV_USER}-review-multicontainer
+oc policy add-role-to-group \
+> -n ${RHT_OCP4_DEV_USER}-review-common system:image-puller \
+> system:serviceaccounts:${RHT_OCP4_DEV_USER}-review-multicontainer
+oc new-app ${RHT_OCP4_DEV_USER}-review-common/todoapp \
+> -p PASSWORD=redhat \
+> -p CLEAN_DATABASE=false \
+> -p HOSTNAME=todoui-${RHT_OCP4_DEV_USER}.${RHT_OCP4_WILDCARD_DOMAIN} \
+> -p BACKEND=todoapi-${RHT_OCP4_DEV_USER}.${RHT_OCP4_WILDCARD_DOMAIN}
+
+oc logs -f bc/backend
+oc get pod
+oc get route
+curl -siw "\n" \
+> todoapi-${RHT_OCP4_DEV_USER}.${RHT_OCP4_WILDCARD_DOMAIN}/todo/api/items-count
+oc port-forward tododb-1-dvcqm 30306:3306
+
+-- another window
+mysql -h127.0.0.1 -P30306 -utodoapp -predhat todo \
+> < ~/DO288/labs/review-multicontainer/todo.sql
+oc get pod
+oc rollout latest dc/backend
+oc get pod
+curl -siw "\n" \
+> todoapi-${RHT_OCP4_DEV_USER}.${RHT_OCP4_WILDCARD_DOMAIN}/todo/api/items-count
+oc get route
+
+lab review-multicontainer grade
+
+lab review-multicontainer finish

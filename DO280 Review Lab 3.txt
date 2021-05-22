@@ -53,7 +53,7 @@ spec:
 host: ${HOSTNAME}
 ...
 
--- add health probes
+-- add health probes to backend
 livenessProbe:
 httpGet:
 path: /todo/api/items-count
@@ -102,6 +102,8 @@ mysql -h127.0.0.1 -P30306 -utodoapp -predhat todo \
 oc get pod
 oc rollout latest dc/backend
 oc get pod
+
+-- -s:silent, i:include header, w:write info
 curl -siw "\n" \
 > todoapi-${RHT_OCP4_DEV_USER}.${RHT_OCP4_WILDCARD_DOMAIN}/todo/api/items-count
 oc get route

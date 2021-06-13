@@ -1,0 +1,134 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2021-06-13T12:44:39Z"
+    labels:
+      app: quotesapi
+      app.kubernetes.io/component: quotesapi
+      app.kubernetes.io/instance: quotesapi
+    managedFields:
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            .: {}
+            f:openshift.io/generated-by: {}
+          f:labels:
+            .: {}
+            f:app: {}
+            f:app.kubernetes.io/component: {}
+            f:app.kubernetes.io/instance: {}
+        f:spec:
+          f:ports:
+            .: {}
+            k:{"port":8080,"protocol":"TCP"}:
+              .: {}
+              f:name: {}
+              f:port: {}
+              f:protocol: {}
+              f:targetPort: {}
+            k:{"port":8443,"protocol":"TCP"}:
+              .: {}
+              f:name: {}
+              f:port: {}
+              f:protocol: {}
+              f:targetPort: {}
+          f:selector:
+            .: {}
+            f:deploymentconfig: {}
+          f:sessionAffinity: {}
+          f:type: {}
+      manager: oc
+      operation: Update
+      time: "2021-06-13T12:44:39Z"
+    name: quotesapi
+    namespace: jsew-ca-ibm-com-quotes-dev
+    resourceVersion: "87250931"
+    selfLink: /api/v1/namespaces/jsew-ca-ibm-com-quotes-dev/services/quotesapi
+    uid: 73fd4531-43d0-4e9f-90f6-9761cb1a7d0e
+  spec:
+    clusterIP: 172.30.227.22
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    - name: 8443-tcp
+      port: 8443
+      protocol: TCP
+      targetPort: 8443
+    selector:
+      deploymentconfig: quotesapi
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2021-06-13T12:44:30Z"
+    labels:
+      app: quotesdb
+      app.kubernetes.io/component: quotesdb
+      app.kubernetes.io/instance: quotesdb
+      app.kubernetes.io/name: mysql
+    managedFields:
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            .: {}
+            f:openshift.io/generated-by: {}
+          f:labels:
+            .: {}
+            f:app: {}
+            f:app.kubernetes.io/component: {}
+            f:app.kubernetes.io/instance: {}
+            f:app.kubernetes.io/name: {}
+        f:spec:
+          f:ports:
+            .: {}
+            k:{"port":3306,"protocol":"TCP"}:
+              .: {}
+              f:name: {}
+              f:port: {}
+              f:protocol: {}
+              f:targetPort: {}
+          f:selector:
+            .: {}
+            f:deploymentconfig: {}
+          f:sessionAffinity: {}
+          f:type: {}
+      manager: oc
+      operation: Update
+      time: "2021-06-13T12:44:30Z"
+    name: quotesdb
+    namespace: jsew-ca-ibm-com-quotes-dev
+    resourceVersion: "87250809"
+    selfLink: /api/v1/namespaces/jsew-ca-ibm-com-quotes-dev/services/quotesdb
+    uid: 685cfb80-766d-4242-9aef-f45d98a35d13
+  spec:
+    clusterIP: 172.30.143.12
+    ports:
+    - name: 3306-tcp
+      port: 3306
+      protocol: TCP
+      targetPort: 3306
+    selector:
+      deploymentconfig: quotesdb
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+kind: List
+metadata:
+  resourceVersion: ""
+  selfLink: ""

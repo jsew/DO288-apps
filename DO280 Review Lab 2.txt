@@ -1,0 +1,102 @@
+DO280 Review Lab 2: Containerizing and Deploying a Service
+------------------
+
+lab review-service start
+source /usr/local/etc/ocp4.config
+oc login -u ${RHT_OCP4_DEV_USER} \
+> -p ${RHT_OCP4_DEV_PASSWORD} ${RHT_OCP4_MASTER_API}
+
+oc new-project ${RHT_OCP4_DEV_USER}-review-service
+
+oc new-app --as-deployment-config --name tododb \
+> --docker-image registry.access.redhat.com/rhscl/mysql-57-rhel7 \
+> -e MYSQL_USER=todoapp \
+> -e MYSQL_PASSWORD=mypass \
+> -e MYSQL_DATABASE=todo
+
+oc get pod
+
+oc set triggers dc/tododb --from-config --remove
+
+oc create secret generic tododb \
+> --from-literal user=todoapp \
+> --from-literal password=mypass
+
+oc set env dc/tododb \
+> --prefix MYSQL_ \
+> --from secret/tododb
+oc set env dc/tododb --list
+
+-- deploy using updated dc
+oc rollout latest dc/tododb
+
+oc get pod
+-- verify db env are initialize
+oc rsh tododb-2-dgxwm env | grep MYSQL_
+
+cd DO288-apps
+git checkout master
+git checkout -b review-service
+git push -u origin review-service
+
+-- -p creates full path
+mkdir -p ~/DO288-apps/todo-backend/.s2i/bin
+cp ~/DO288/labs/review-service/lifecycle.sh \
+> ~/DO288-apps/todo-backend/.s2i/bin/assemble
+-- see where the image runs
+oc describe istag nodejs:12 -n openshift \
+> | grep io.openshift.s2i.scripts-url
+-- "io.openshift.s2i.scripts-url": "image:///usr/libexec/s2i",
+
+-- edit script ~/DO288-apps/todo-backend/.s2i/bin/assemble  #TODO:
+/usr/libexec/s2i/assemble
+
+cd ~/DO288-apps/todo-backend
+git add .s2i
+git commit -m 'Add custom assemble script'
+git push
+
+cd ~
+
+oc new-app --as-deployment-config --name backend \
+> --build-env npm_config_registry=\
+> http://${RHT_OCP4_NEXUS_SERVER}/repository/nodejs \
+> -e DATABASE_NAME=todo \
+> -e DATABASE_USER=todoapp \
+> -e DATABASE_PASSWORD=mypass \
+> -e DATABASE_SVC=tododb \
+> --context-dir todo-backend \
+> nodejs:12~https://github.com/${RHT_OCP4_GITHUB_USER}/DO288-apps#review-service
+
+oc logs -f bc/backend
+oc get pod
+oc set triggers dc/backend --from-config --remove
+
+oc set env dc/backend \
+> --prefix DATABASE_ \
+> --from secret/tododb
+oc set env dc/backend --list
+
+oc create cm todoapp --from-literal init=true
+oc set env dc/backend \
+> --prefix=DATABASE_ \
+> --from=cm/todoapp
+
+oc set env dc/backend --list
+
+oc rollout latest dc/backend
+oc get pod
+oc rsh backend-2-1bjrv env | grep DATABASE_
+
+oc expose svc backend
+oc get route
+curl -si \
+> backend-${RHT_OCP4_DEV_USER}-review-service.${RHT_OCP4_WILDCARD_DOMAIN}\
+> /todo/api/items-count
+
+oc port-forward tododb-2-dgxwm 30306:3306
+
+-- open another terminal window
+mysqlshow -utodoapp -pmypass -h127.0.0.1 -P30306 todo
+
+lab review-service grade
